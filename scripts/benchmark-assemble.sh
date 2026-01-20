@@ -8,7 +8,12 @@ set -u
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CLEANER="${PROJECT_ROOT}/scripts/clear-gradle-caches.sh"
 SAVE_CACHES="${PROJECT_ROOT}/scripts/save-gradle-caches.sh"
-LOG_DIR="${PROJECT_ROOT}/benchmark-logs"
+
+# Use a dedicated benchmark workspace outside the project tree for all
+# benchmark logs, archives, and temporary files to avoid polluting the
+# project directory and invalidating Gradle's configuration cache.
+BENCHMARK_ROOT="${BENCHMARK_ROOT:-$HOME/work/ddg-benchmark}"
+LOG_DIR="${BENCHMARK_ROOT}/benchmark-logs"
 RUNS=5
 
 # Pin JAVA_HOME if you want a consistent JDK for all runs
@@ -38,6 +43,12 @@ if [[ ! -x "${PROJECT_ROOT}/gradlew" ]]; then
   exit 1
 fi
 
+# Initial clean
+rm -rf "${PROJECT_ROOT}/.gradle"
+
+# Set the gradle encryption key to something definitive
+export GRADLE_ENCRYPTION_KEY=$(openssl rand -base64 16)
+
 for i in $(seq 1 ${RUNS}); do
   echo "==> Run #${i}"
 
@@ -56,11 +67,11 @@ for i in $(seq 1 ${RUNS}); do
   "${CLEANER}" > "${CLEAR_LOG_FILE}" 2>&1
 
   # Restore Gradle caches from the just-saved tarball before running Gradle.
-  CACHE_ARCHIVE="${PROJECT_ROOT}/benchmark-logs/gradle-caches.tar.gz"
+  CACHE_ARCHIVE="${BENCHMARK_ROOT}/benchmark-logs/gradle-caches.tar.gz"
   if [[ -f "${CACHE_ARCHIVE}" ]]; then
     echo "  - Restoring Gradle caches from ${CACHE_ARCHIVE} (log -> ${SAVE_LOG_FILE})..."
-
-    RESTORE_TMP="${PROJECT_ROOT}/benchmark-logs/.gradle-restore-tmp"
+    ls -hal "${CACHE_ARCHIVE}"
+  RESTORE_TMP="${BENCHMARK_ROOT}/benchmark-logs/.gradle-restore-tmp"
     rm -rf "${RESTORE_TMP}"
     mkdir -p "${RESTORE_TMP}"
 
@@ -96,6 +107,9 @@ for i in $(seq 1 ${RUNS}); do
     echo "  - WARNING: cache archive not found at ${CACHE_ARCHIVE}; caches will be cold for this run"
   fi
 
+  rm -rf "${BENCHMARK_ROOT}/benchmark-logs/.gradle-restore-tmp"
+  rm -rf "${BENCHMARK_ROOT}/benchmark-logs/.gradle-cache-tmp"
+
   echo "  - Running ./gradlew clean"
   "${PROJECT_ROOT}/gradlew" clean > /dev/null  2>&1
 
@@ -108,6 +122,8 @@ for i in $(seq 1 ${RUNS}); do
 
   END_EPOCH=$(date +%s)
   ELAPSED=$((END_EPOCH - START_EPOCH))
+
+  cat "${LOG_FILE}" | grep -Ei '(cached\s+)?configuration\s+(cache)?'
 
   if [[ ${EXIT_CODE} -ne 0 ]]; then
     printf "  => Run #%-2d FAILED (exit=%d) after %4ds – see %s\n\n" "${i}" "${EXIT_CODE}" "${ELAPSED}" "${LOG_FILE}"

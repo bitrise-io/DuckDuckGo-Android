@@ -7,7 +7,12 @@ set -u
 
 GRADLE_USER_HOME="${GRADLE_USER_HOME:-$HOME/.gradle}"
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-CACHE_ARCHIVE_DIR="${PROJECT_ROOT}/benchmark-logs"
+
+# Use a dedicated benchmark workspace outside the project tree for all
+# benchmark logs, archives, and temporary files to avoid polluting the
+# project directory and invalidating Gradle's configuration cache.
+BENCHMARK_ROOT="${BENCHMARK_ROOT:-$HOME/work/ddg-benchmark}"
+CACHE_ARCHIVE_DIR="${BENCHMARK_ROOT}/benchmark-logs"
 CACHE_ARCHIVE="${CACHE_ARCHIVE_DIR}/gradle-caches.tar.gz"
 PROJECT_GRADLE_DIR="${PROJECT_ROOT}/.gradle"
 
@@ -18,7 +23,7 @@ echo "Project .gradle dir:  ${PROJECT_GRADLE_DIR}"
 echo "Archive dir:          ${CACHE_ARCHIVE_DIR}"
 echo "Archive file:         ${CACHE_ARCHIVE}"
 
-tmp_root="${PROJECT_ROOT}/benchmark-logs/.gradle-cache-tmp"
+tmp_root="${BENCHMARK_ROOT}/benchmark-logs/.gradle-cache-tmp"
 rm -rf "${tmp_root}"
 mkdir -p "${tmp_root}/gradle-home" "${tmp_root}/project-gradle"
 
@@ -34,6 +39,7 @@ if [[ -d "${GRADLE_USER_HOME}" ]]; then
     # Dependency AARs
     'caches/modules-*/files-*' \
     'caches/modules-*/metadata-*' \
+    'caches/**/transforms' \
     # Generated JARs for plugins and build scripts
     # The `**` segment matches the version-specific folder, such as `7.6`.
     'caches/**/generated-gradle-jars/*.jar' \
@@ -99,3 +105,4 @@ ls -hal "${CACHE_ARCHIVE}"
 # Leave staged directory around for inspection; caller may clean it if desired.
 echo "Cache archive created at: ${CACHE_ARCHIVE}"
 ls -hal "${CACHE_ARCHIVE}"
+# tree -L 2 "${PROJECT_GRADLE_DIR}/configuration-cache" || true
