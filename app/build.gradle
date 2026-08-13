@@ -150,7 +150,7 @@ android {
             ]
         }
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             manifestPlaceholders = [
                     appIcon     : "@mipmap/ic_launcher_red",

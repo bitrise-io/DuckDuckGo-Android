@@ -19,3 +19,8 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# e2e fixture: lint detector classes leak onto the runtime classpath but are
+# compile-only — safe to ignore for R8
+-dontwarn com.android.tools.lint.**
+-dontwarn slack.lint.**
