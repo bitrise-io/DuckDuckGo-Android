@@ -25,7 +25,7 @@ android {
     defaultConfig {
         // Bitrise e2e fixture: our own package so builds can be uploaded to a
         // Bitrise-owned Google Play app (upstream: "com.duckduckgo.mobile.android")
-        applicationId "com.bitrise.ddgmobile"
+        applicationId "com.bitrise.ddgmobile2"
 
         minSdk min_sdk
         targetSdk target_sdk
